@@ -1,5 +1,6 @@
 import pygame as p
 import random
+import math
 p.init()
 # Display screen
 X=800
@@ -167,9 +168,158 @@ def win_check(board):
     return False
 
 
+def evaluate(board):
+    score=0
+
+    two_in_a_row=+10
+    three_in_a_row=+1000
+    four_in_a_row=+100000
+    block=+5000
+
+    def score_calculation(seq):
+        if seq.count(1)==4:
+            return -four_in_a_row
+        elif seq.count(2)==4:
+            return four_in_a_row
+        elif seq.count(1)==3 and seq.count(2)==1:
+            return block
+        elif seq.count(2)==3 and seq.count(1)==1:
+            return -block
+        elif seq.count(1)==3 and seq.count(0)==1:
+            return -three_in_a_row
+        elif seq.count(2)==3 and seq.count(0)==1:
+            return three_in_a_row
+        elif seq.count(1)==2 and seq.count(0)==2:
+            return -two_in_a_row
+        elif seq.count(2)==2 and seq.count(0)==2:
+            return two_in_a_row
+        return 0
 
 
 
+    row_max=len(board[0])
+    column_max=len(board)
+
+    # Four in a row
+    #check rows
+    for x in range(0,row_max):
+
+        for y in range(0,column_max-3):
+            sequence=[board[y+i][x] for i in range(0,4)]
+            score+=score_calculation(sequence)
+
+    #check columns
+    for x in range(0,column_max):
+
+        for y in range(0,row_max-3):
+            sequence = [board[x][y+i] for i in range(0, 4)]
+            score += score_calculation(sequence)
+    # Check diagonals (bottom-left to top-right)
+    for x in range(0,column_max - 3):
+            for y in range(0,row_max - 3):
+                sequence = [board[x+i][y+i] for i in range(0, 4)]
+                score += score_calculation(sequence)
+    # Check diagonals (top-left to bottom-right)
+    for x in range(0,column_max - 3):
+            for y in range(3, row_max):
+                sequence = [board[x + i][y - i] for i in range(0, 4)]
+                score += score_calculation(sequence)
+
+    return score
+
+def make_move(old_board,columnNo,player):
+    new_board = [column[:] for column in old_board]
+    if new_board[columnNo][0]==1 or new_board[columnNo][0]==2:
+
+        pass
+    elif new_board[columnNo][-1]==0:
+
+        new_board[columnNo][-1]=player
+    else:
+        firstTime = True
+        for i in range(0,len(new_board[columnNo])-1):
+
+            if (new_board[columnNo][i+1]==1 or new_board[columnNo][i+1]==2) and firstTime:
+                firstTime=False
+                new_board[columnNo][i] = player
+    return new_board
+
+def game_over(board):
+    row_max = len(board[0])
+    column_max = len(board)
+    # check rows
+    for x in range(0, row_max):
+
+        for y in range(0, column_max - 3):
+            if board[y][x] == 1 and board[y + 1][x] == 1 and board[y + 2][x] == 1 and board[y + 3][x] == 1:
+                return True
+            elif board[y][x] == 2 and board[y + 1][x] == 2 and board[y + 2][x] == 2 and board[y + 3][x] == 2:
+                return True
+
+    # check columns
+    for x in range(0, column_max):
+
+        for y in range(0, row_max - 3):
+            if board[x][y] == 1 and board[x][y + 1] == 1 and board[x][y + 2] == 1 and board[x][y + 3] == 1:
+                return True
+            elif board[x][y] == 2 and board[x][y + 1] == 2 and board[x][y + 2] == 2 and board[x][y + 3] == 2:
+                return True
+
+    # Check diagonals (bottom-left to top-right)
+    for x in range(0, column_max - 3):
+        for y in range(0, row_max - 3):
+            if board[x][y] == board[x + 1][y + 1] == board[x + 2][y + 2] == board[x + 3][y + 3] != 0:
+                if board[x][y] == 1:
+                    return True
+                else:
+                    return True
+
+    # Check diagonals (top-left to bottom-right)
+    for x in range(0, column_max - 3):
+        for y in range(3, row_max):
+            if board[x][y] == board[x + 1][y - 1] == board[x + 2][y - 2] == board[x + 3][y - 3] != 0:
+                if board[x][y] == 1:
+                    return True
+                else:
+                    return True
+    return False
+
+def generate_possible_moves(board1):
+    possible_moves=[]
+    for column in range(0,len(board1)):
+        if board1[column][0]==0:
+            possible_moves.append(column)
+    return possible_moves
+
+def minimax(board1,depth,maximising_player):
+    if depth==0 or game_over(board1):
+        return evaluate(board1)
+
+    if maximising_player:
+        maxEval=-math.inf
+        for move in generate_possible_moves(board1):
+            newBoard=make_move(board1,move,2)
+            eval=minimax(newBoard,depth-1,False)
+            maxEval=max(maxEval,eval)
+        return maxEval
+    else:
+        minEval=math.inf
+        for move in generate_possible_moves(board1):
+            newBoard=make_move(board1, move, 1)
+            eval=minimax(newBoard,depth-1, True)
+            minEval=min(minEval,eval)
+        return minEval
+
+def bestMove(board1,depth):
+    bestScore=-math.inf
+    bestMove=None
+    for move in generate_possible_moves(board1):
+        new_board=make_move(board1,move,2)
+        eval=minimax(new_board,depth,False)
+        if eval>bestScore:
+            bestScore=eval
+            bestMove=move
+    return bestMove
 
 
 p.display.flip()
@@ -198,6 +348,7 @@ while run:
                             result=counter_animation(coinR,resultX,resultY)
                             turn="Yellow"
                             turn_done=False
+
                             if result == "Red":
                                 winner="Red"
                                 gameOver=True
@@ -213,8 +364,12 @@ while run:
                                 screen.blit(yellowWin, (148, 238.5))
 
     if turn=="Yellow" and turn_done and not gameOver:
-        columnNo=random.randint(0,6)
-        resultX=columnNo
+
+        move=bestMove(board,3)
+
+
+        columnNo=move
+        resultX=move
         resultY=yellow_counter_drop(board, resultX)
         if resultY != "Full":
             print("Row: ", resultY, "Column: ", resultX)
@@ -222,6 +377,7 @@ while run:
 
             result=counter_animation(coinY,resultX, resultY)
             turn = "Red"
+
             if result == "Red":
                 winner = "Red"
                 gameOver = True
@@ -235,20 +391,6 @@ while run:
 
                 print("Yellow wins")
                 screen.blit(yellowWin, (148, 238.5))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
     for event in p.event.get():
