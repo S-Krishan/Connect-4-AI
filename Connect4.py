@@ -1,6 +1,7 @@
 import pygame as p
 import random
 import math
+import time
 p.init()
 # Display screen
 X=800
@@ -101,7 +102,13 @@ def counter_animation(coin,column,row):
             position=ending_row_cord
 
     board[column][row] = value
+    screen.fill((173, 216, 230))
+    update_red_counters(board)
+    update_yellow_counters(board)
     screen.blit(coin, (column_cord,ending_row_cord))
+    screen.blit(imp, (137.5, 170))
+    p.display.update()
+
     result = win_check(board)
     return result
 
@@ -291,7 +298,7 @@ def generate_possible_moves(board1):
             possible_moves.append(column)
     return possible_moves
 
-def minimax(board1,depth,maximising_player):
+def minimax(board1,depth,alpha,beta,maximising_player):
     if depth==0 or game_over(board1):
         return evaluate(board1)
 
@@ -299,15 +306,23 @@ def minimax(board1,depth,maximising_player):
         maxEval=-math.inf
         for move in generate_possible_moves(board1):
             newBoard=make_move(board1,move,2)
-            eval=minimax(newBoard,depth-1,False)
+            eval=minimax(newBoard,depth-1,alpha,beta,False)
             maxEval=max(maxEval,eval)
+            alpha=max(alpha,eval)
+            if alpha>=beta:
+                break
+
         return maxEval
     else:
         minEval=math.inf
         for move in generate_possible_moves(board1):
             newBoard=make_move(board1, move, 1)
-            eval=minimax(newBoard,depth-1, True)
+            eval=minimax(newBoard,depth-1,alpha,beta, True)
             minEval=min(minEval,eval)
+            beta=min(beta,eval)
+            if beta<=alpha:
+                break
+
         return minEval
 
 def bestMove(board1,depth):
@@ -315,7 +330,7 @@ def bestMove(board1,depth):
     bestMove=None
     for move in generate_possible_moves(board1):
         new_board=make_move(board1,move,2)
-        eval=minimax(new_board,depth,False)
+        eval=minimax(new_board,depth-1,-math.inf,math.inf,False)
         if eval>bestScore:
             bestScore=eval
             bestMove=move
@@ -331,23 +346,26 @@ while run:
         update_red_counters(board)
         update_yellow_counters(board)
 
-        turn_done=True
+        turn_done = True
         screen.blit(imp, (137.5, 170))
+
     if turn=="Red" and not gameOver:
         mx,my=p.mouse.get_pos()
         for checkNo in range(0,7):
             if mx>=137.5+(75*checkNo) and mx<=212.5+(75*checkNo):
                 screen.blit(coinTransparent, (152+(71.75*checkNo), 113))
                 for event in p.event.get():
+
                     if event.type==p.MOUSEBUTTONDOWN:
+
                         resultX=checkNo
                         resultY = red_counter_drop(board, resultX)
                         if resultY!="Full":
-                            print("Row: ",resultY,"Column: ",resultX)
-                            print(board)
+
                             result=counter_animation(coinR,resultX,resultY)
                             turn="Yellow"
-                            turn_done=False
+                            turn_done = False
+
 
                             if result == "Red":
                                 winner="Red"
@@ -362,21 +380,28 @@ while run:
 
                                 print("Yellow wins")
                                 screen.blit(yellowWin, (148, 238.5))
+                        break
+
+
 
     if turn=="Yellow" and turn_done and not gameOver:
-
-        move=bestMove(board,3)
-
+        start=time.process_time()
+        move=bestMove(board,6)
+        print(time.process_time() - start)
 
         columnNo=move
         resultX=move
+
         resultY=yellow_counter_drop(board, resultX)
         if resultY != "Full":
-            print("Row: ", resultY, "Column: ", resultX)
-            print(board)
+
 
             result=counter_animation(coinY,resultX, resultY)
+
+
             turn = "Red"
+
+
 
             if result == "Red":
                 winner = "Red"
