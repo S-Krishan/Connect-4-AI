@@ -56,7 +56,7 @@ The trained DQN learns recognisable Connect 4 strategy, including opening in the
 ## Challenges and lessons learned
 
 - The biggest issue during training was in the reward function itself: an earlier version of the reward calculation caused the agent to converge on a repetitive strategy of always playing the same column, rather than genuinely learning. The current shaped reward structure (weighted heavily toward blocking threats) was the fix.
-- There's a commented-out block in `step()` for penalising moves that leave the opponent an easy three-in-a-row — an earlier attempt at extra reward shaping that was ultimately left disabled, most likely because it didn't clearly improve behaviour over the simpler reward function.
+- Tried penalising moves that leave the opponent an easy three-in-a-row — an earlier attempt at extra reward shaping that was ultimately left disabled, because it didn't clearly improve behaviour over the simpler reward function.
 
 ## Possible next steps
 
