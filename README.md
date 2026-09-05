@@ -1,4 +1,4 @@
-# Connect 4 — Deep Q-Network Agent
+## Connect 4 — Deep Q-Network Agent
 
 A playable Connect 4 game (Pygame) featuring a Deep Q-Network (DQN) agent trained through reinforcement learning against a minimax opponent using alpha-beta pruning.
 
