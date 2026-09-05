@@ -2,6 +2,16 @@ import pygame as p
 import random
 import math
 import time
+
+
+
+
+
+
+
+
+
+
 p.init()
 # Display screen
 X=800
@@ -15,10 +25,6 @@ if startTurn==0:
     turn="Red"
 else:
     turn="Yellow"
-
-
-
-
 
 #Fill background with sky blue
 screen.fill((173,216,230))
@@ -36,6 +42,326 @@ coinTransparent=p.transform.scale(coinTransparent,(61,61))
 coinY=p.transform.scale(coinY,(61,61))
 
 board=[[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0]]
+
+
+import numpy as np
+
+class Connect4Env: #sets up the connect 4 environment which the agent will learn from
+    def __init__(self):
+        self.rows=6
+        self.columns=7
+        self.board=[[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0]]
+        self.starting_turn=1
+    def reset(self):
+        self.board=[[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0]]
+        self.starting_turn=random.randint(1,2)
+        self.game_over=False
+        return self.board
+    def step(self,action,depth):
+        if self.game_over:
+            raise Exception("Game is over, reset environment to restart the game")
+        if action==-1:
+            move=bestMoveMiniMaxAI(self.board, depth)
+            for i in range(len(self.board[move]) - 1, -1, -1):
+                if self.board[move][i] == 0:  # Check if the slot is empty
+                    self.board[move][i] = 1  # Place the current player's piece
+                    break  # Exit the loop after placing the piece
+            reward=0
+            return self.board, reward, self.game_over
+
+        if self.board[action][0]!=0:
+            reward=-100
+            self.game_over = True
+            return self.board, reward, self.game_over
+
+        initial_reward=self.calculate_reward(self.board)
+        reward=0
+
+
+        for i in range(len(self.board[action]) - 1, -1, -1):
+                if self.board[action][i] == 0:  # Check if the slot is empty
+                    self.board[action][i] = 2  # Place the current player's piece
+                    break  # Exit the loop after placing the piece
+
+        row_max = self.rows
+        column_max = self.columns
+        not_draw=None
+        #win check
+        # check rows
+        for x in range(0, row_max):
+
+                for y in range(0, column_max - 3):
+
+                    if self.board[y][x] == 2 and self.board[y + 1][x] == 2 and self.board[y + 2][x] == 2 and self.board[y + 3][x] == 2:
+                        reward=1
+                        not_draw=1
+                        self.game_over=True
+
+
+        # check columns
+        for x in range(0, column_max):
+
+                for y in range(0, row_max - 3):
+
+                    if self.board[x][y] == 2 and self.board[x][y + 1] == 2 and self.board[x][y + 2] == 2 and self.board[x][y + 3] == 2:
+                        reward=1
+                        not_draw=1
+                        self.game_over = True
+
+        # Check diagonals (bottom-left to top-right)
+        for x in range(0, column_max - 3):
+                for y in range(0, row_max - 3):
+                    if self.board[x][y] == self.board[x + 1][y + 1] == self.board[x + 2][y + 2] == self.board[x + 3][y + 3] != 0:
+                        if self.board[x][y] == 2:
+                            reward=1
+                            not_draw= 1
+
+                            self.game_over = True
+
+
+        # Check diagonals (top-left to bottom-right)
+        for x in range(0, column_max - 3):
+                for y in range(3, row_max):
+                    if self.board[x][y] == self.board[x + 1][y - 1] == self.board[x + 2][y - 2] == self.board[x + 3][y - 3] != 0:
+                        if self.board[x][y] == 2:
+                            reward=1
+                            not_draw= 1
+
+                            self.game_over = True
+
+        #draw check
+        full_count=0
+        if not_draw==None:
+                for column in range(0,column_max):
+                    if self.board[column][0] == 1 or self.board[column][0] == 2:
+                        full_count+=1
+                if full_count==column_max:
+
+                    self.game_over=True
+
+        final_reward = self.calculate_reward(self.board)
+        if reward!=1:
+            reward = final_reward - initial_reward
+        else:
+            reward=1
+        """"
+        pen_actions = []
+        for x in range(0, column_max):
+
+            for y in range(0, row_max - 3):
+                sequence = [board[x][y + i] for i in range(0, 4)]
+                if (sequence.count(2) == 3 and sequence.count(1) == 1) or (
+                        sequence.count(2) == 2 and sequence.count(1) == 1 and sequence.count(0) == 1):
+                    pen_actions.append(x)
+        if action in pen_actions:
+            reward -= 0.1
+        """
+
+        #minimax turn
+        if self.game_over==False:
+            not_draw=None
+            move = bestMoveMiniMaxAI(self.board, depth)
+            if self.board[move][0] != 0:
+                reward = 0
+                self.game_over = True
+                return self.board, reward, self.game_over
+
+
+
+            else:
+                for i in range(len(self.board[move]) - 1, -1, -1):
+                    if self.board[move][i] == 0:  # Check if the slot is empty
+                        self.board[move][i] = 1  # Place the current player's piece
+                        break  # Exit the loop after placing the piece
+            #check rows
+            for x in range(0, row_max):
+
+                    for y in range(0, column_max - 3):
+                        if self.board[y][x] == 1 and self.board[y + 1][x] == 1 and self.board[y + 2][x] == 1 and self.board[y + 3][x] == 1:
+                            not_draw=1
+                            reward=-1
+                            self.game_over = True
+
+
+
+            # check columns
+            for x in range(0, column_max):
+
+                    for y in range(0, row_max - 3):
+                        if self.board[x][y] == 1 and self.board[x][y + 1] == 1 and self.board[x][y + 2] == 1 and self.board[x][y + 3] == 1:
+                            not_draw=1
+                            reward=-1
+                            self.game_over = True
+
+
+            # Check diagonals (bottom-left to top-right)
+            for x in range(0, column_max - 3):
+                    for y in range(0, row_max - 3):
+                        if self.board[x][y] == self.board[x + 1][y + 1] == self.board[x + 2][y + 2] == self.board[x + 3][y + 3] != 0:
+                            if self.board[x][y] == 1:
+                                not_draw= 1
+                                reward=-1
+                                self.game_over = True
+
+
+            # Check diagonals (top-left to bottom-right)
+            for x in range(0, column_max - 3):
+                    for y in range(3, row_max):
+                        if self.board[x][y] == self.board[x + 1][y - 1] == self.board[x + 2][y - 2] == self.board[x + 3][y - 3] != 0:
+                            if self.board[x][y] == 1:
+                                not_draw= 1
+                                reward=-1
+                                self.game_over = True
+
+            #draw check
+            full_count=0
+            if not_draw==None:
+                    for column in range(0,column_max):
+                        if self.board[column][0] == 1 or self.board[column][0] == 2:
+                            full_count+=1
+                    if full_count==column_max:
+
+                        self.game_over=True
+
+
+
+
+
+
+
+
+
+
+        return self.board, reward, self.game_over
+    def calculate_reward(self,board):
+        reward = 0
+
+        two_in_a_row = 0.001
+        three_in_a_row = 0.01
+
+        block = 0.9
+
+        def score_calculation(seq):
+
+
+            if seq.count(1) == 3 and seq.count(2) == 1:
+                return block
+
+
+            elif seq.count(2) == 3 and seq.count(0) == 1:
+                return three_in_a_row
+
+            elif seq.count(2) == 2 and seq.count(0) == 2:
+                return two_in_a_row
+            return 0
+
+        row_max = len(board[0])
+        column_max = len(board)
+
+        # Four in a row
+        # check rows
+        for x in range(0, row_max):
+
+            for y in range(0, column_max - 3):
+                sequence = [board[y + i][x] for i in range(0, 4)]
+                reward += score_calculation(sequence)
+
+        # check columns
+        for x in range(0, column_max):
+
+            for y in range(0, row_max - 3):
+                sequence = [board[x][y + i] for i in range(0, 4)]
+                reward += score_calculation(sequence)
+        # Check diagonals (bottom-left to top-right)
+        for x in range(0, column_max - 3):
+            for y in range(0, row_max - 3):
+                sequence = [board[x + i][y + i] for i in range(0, 4)]
+                reward += score_calculation(sequence)
+        # Check diagonals (top-left to bottom-right)
+        for x in range(0, column_max - 3):
+            for y in range(3, row_max):
+                sequence = [board[x + i][y - i] for i in range(0, 4)]
+                reward += score_calculation(sequence)
+
+        return reward
+    def render(self):
+        print(self.board)
+
+import tensorflow
+from tensorflow.keras import layers, models
+
+def build_model():
+    model = models.Sequential() #try replacing with a cnn
+    model.add(layers.Input(shape=(42,)))
+    model.add(layers.Dense(128, activation='relu'))
+    model.add(layers.Dense(128, activation='relu'))
+    model.add(layers.Dense(7))
+    optimizer = tensorflow.keras.optimizers.Adam(learning_rate=0.00025, clipnorm=1.0)
+    model.compile(optimizer=optimizer, loss='mean_squared_error')
+    return model
+model=build_model()
+
+
+class DQNAgent:
+    def __init__(self, model):
+        self.model = model
+        self.target_model = self.build_target_model()  # Initialize target model
+        self.target_update_counter=0
+        self.memory = [] #initialise memory that is used for experience replay
+
+        self.gamma = 0.95  # Discount factor - makes it so that rewards further in the future are prioritised less
+
+
+    def build_target_model(self):
+        # Assuming 'model' is a Keras model, you can clone it for the target model
+        target_model = tensorflow.keras.models.clone_model(self.model)
+        target_model.set_weights(self.model.get_weights())
+        return target_model
+    def update_target_model(self):
+        self.target_model.set_weights(self.model.get_weights())
+
+    def act(self, epsilon,state):
+        if np.random.rand() <= epsilon: #at the start the agent will experiment a lot
+            return random.choice(self.available_actions(state)) #a new random move is tried
+        act_values = self.model.predict(state)
+        for i in range(0,7):
+            if state[0][i*6]!=0:
+                act_values[0][i]=-np.inf
+
+
+        return np.argmax(act_values)
+
+    def remember(self, state, action, reward, next_state, done):
+        self.memory.append((state, action, reward, next_state, done)) #all the information about the step that occured are sent to be used as training data
+
+    def train(self, batch_size=32):
+
+
+
+        minibatch = random.sample(self.memory, batch_size) #choose a random batch to train from to prevent catastrophic forgetting if it learns things in a sequence
+        for state, action, reward, next_state, done in minibatch:
+            target = reward #if we are going to a terminal state the target q value is just the reward
+            if not done:
+                target = reward + (self.gamma * np.amax(self.target_model.predict(next_state)[0])) #If not use the Bellman equation to work out the max q value of the predicted best action of the next state (with the dicount in order to take into account future rewards) plus the immediate reward
+            target_f = self.model.predict(state)
+            #create a copy of the q network and output thes values
+            target_f[0][action] = target #change the q value of just the action we are analysing to the target value calculated earlier
+
+
+            self.model.fit(state, target_f, epochs=1, verbose=0) #The mean squared error between the output of the q network (input is the state) and the output of the t network is calculated. This cost is then used to backpropagate throught the q network and update the weights to make better predictions in the future
+
+
+
+
+        self.target_update_counter += 1
+        if self.target_update_counter % 10 == 0:  #Update the target network every 10 training steps
+            self.update_target_model()
+
+    def available_actions(self, state):
+            # Return list of available columns (not full)
+            return [col for col in range(7) if state[0, col * 6] == 0]
+
+
 
 def red_counter_drop(board,columnNo):
     if board[columnNo][0]==1 or board[columnNo][0]==2:
@@ -325,7 +651,7 @@ def minimax(board1,depth,alpha,beta,maximising_player):
 
         return minEval
 
-def bestMove(board1,depth):
+def bestMoveMiniMaxAI(board1,depth):
     bestScore=-math.inf
     bestMove=None
     for move in generate_possible_moves(board1):
@@ -335,6 +661,126 @@ def bestMove(board1,depth):
             bestScore=eval
             bestMove=move
     return bestMove
+
+
+
+
+
+
+
+
+
+
+
+
+def trainDQN():
+    env = Connect4Env()  # Use your Connect 4 environment
+    agent = DQNAgent(model)
+
+    episodes = 2000  # amount of games played
+    steps=0
+    depth=2
+    epsilon = 1.0  # Exploration rate - this is the percentage that represents how likely the agent is to experiment
+    epsilon_decay = 0.9987  # we want the model to explore less and rely more on the model over time as the model gets more accurate
+    epsilon_min = 0.1
+
+
+    for e in range(episodes+1):
+
+        state = env.reset()  # reset the connect 4 environment every episode
+
+        if env.starting_turn==1: #if the minimax algorithm starts
+            action=-1
+            next_state, reward, game_over = env.step(action,depth)
+
+            next_state = np.reshape(next_state, [1, 42])
+            state = next_state
+        state = np.reshape(state, [1, 42])
+        if e%500==0:
+            q_values = model.predict(state)[0]
+            print(q_values)
+        # flatten the state array so it can be used in the neural network
+        for time in range(500):  # 500 is the max time limit before moving onto the next episode
+            action = agent.act(epsilon,state)  # the q network uses an e greedy policy to make a move in the current state
+
+            next_state, reward, game_over = env.step(action,depth)  # the move is sent to the enironment which returns the updated board, reward from that move, and if the game is over
+
+            next_state = np.reshape(next_state, [1, 42])  # flatten the next_state array so it can be used in the neural network
+            agent.remember(state, action, reward, next_state,game_over)  # the information from that move is sent to the memory for experience replay
+            state = next_state  # the state is updated to the new board
+            if game_over:
+                print(f"Episode: {e}/{episodes}, Score: {time}, Epsilon: {epsilon:.2}")
+                if epsilon > epsilon_min:
+                    epsilon *= epsilon_decay  # Lower how much the agent experiments
+                break
+            if len(agent.memory) > 32 and steps%4==0:
+
+                agent.train(32)  #Train the agent on a random minibatch of 32 once the memory has that many training examples
+            steps=steps+1
+    model.save('Connect4DQN-Mark-V.h5')
+
+def loadDQN():
+    from tensorflow import keras
+
+    model = tensorflow.keras.models.load_model('Connect4DQN-Mark-V.h5')  # Load the model from a file
+    return model
+model1=loadDQN()
+def bestMoveDQN(board):
+    state=np.reshape(board,[1,42])
+    print(state)
+    q_values = model1.predict(state)[0]
+    print(q_values)
+    valid_moves=[col for col in range(0,7) if board[col][0]==0]
+    masked_q_values=np.full_like(q_values,-np.inf)
+    for col in valid_moves:
+        masked_q_values[col]=q_values[col]
+    move=np.argmax(masked_q_values)
+
+
+    return move
+
+def play100():
+    MiniMaxWins=0
+    DQNWins=0
+    for x in range(0,100):
+        board=[[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0]]
+        game_over=False
+        turnNo = random.randint(1, 2)
+        prob=0.6
+        while not game_over:
+
+            if turnNo==1:
+                if random.uniform(0,1)<prob:
+                    move=bestMoveMiniMaxAI(board,2)
+                else:
+                    move=random.randint(0,6)
+
+                resultX = move
+
+                resultY = red_counter_drop(board, resultX)
+                result=win_check(board)
+                if result=="Red":
+                    MiniMaxWins+=1
+                    break
+                turnNo=2
+            if turnNo==2:
+                move=bestMoveDQN(board)
+
+                resultX = move
+                resultY = yellow_counter_drop(board, resultX)
+                result=win_check(board)
+                if result=="Yellow":
+                    DQNWins+=1
+                    break
+                turnNo=1
+    return MiniMaxWins,DQNWins
+
+
+
+
+
+
+
 
 
 p.display.flip()
@@ -386,7 +832,7 @@ while run:
 
     if turn=="Yellow" and turn_done and not gameOver:
         start=time.process_time()
-        move=bestMove(board,6)
+        move=bestMoveDQN(board)
         print(time.process_time() - start)
 
         columnNo=move
@@ -422,6 +868,10 @@ while run:
         if event.type==p.QUIT:
             run=False
     p.display.update()
+
 p.quit()
+
+
+
 
 
